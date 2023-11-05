@@ -1,0 +1,5 @@
+package uz.backall.user.history;
+
+public enum Label {
+    NAME_ENTERED, CATEGORY_OPENED, INNERCATEGORY_SHOWED, INNERCATEGORY_OPENED, OFFER_STARTED,
+}
