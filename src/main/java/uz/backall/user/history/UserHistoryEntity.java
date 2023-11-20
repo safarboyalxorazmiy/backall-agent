@@ -1,6 +1,5 @@
 package uz.backall.user.history;
 
-import com.example.enums.Label;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -9,7 +8,7 @@ import lombok.Setter;
 @Setter
 
 @Entity
-@Table(name = "user_history")
+@Table(name = "bot_user_history")
 public class UserHistoryEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

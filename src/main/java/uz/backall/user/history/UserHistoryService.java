@@ -20,33 +20,9 @@ public class UserHistoryService {
         return null;
     }
 
-    // TODO Foydalanuvchining oxirgi ochgan category nomini olish
-    public String getLastCategoryName(Long chatId) {
-        Optional<UserHistoryEntity> last = userHistoryRepository.getLastByLabel(Label.CATEGORY_OPENED.name(), chatId);
-        if (last.isEmpty()) {
-            return null;
-        }
-
-        return last.get().getValue();
-    }
-
-    // TODO Foydalanuvchining oxirgi ochgan innerCategory nomini olish
-    public String getLastInnerCategoryName(Long chatId) {
-        Optional<UserHistoryEntity> last = userHistoryRepository.getLastByLabel(Label.INNERCATEGORY_OPENED.name(), chatId);
-        if (last.isPresent()) {
-            return last.get().getValue();
-        }
-
-        return null;
-    }
-
-    public String getLastOfferId(Long chatId) {
-        Optional<UserHistoryEntity> last = userHistoryRepository.getLastByLabel(Label.OFFER_STARTED.name(), chatId);
-        if (last.isPresent()) {
-            return last.get().getValue();
-        }
-
-        return null;
+    public String getLastValueByChatId(Long chatId, Label label) {
+        Optional<UserHistoryEntity> last = userHistoryRepository.getLastByLabel(label.name(), chatId);
+        return last.map(UserHistoryEntity::getValue).orElse(null);
     }
 
     public void create(Label label, long chatId, String value) {
@@ -55,5 +31,9 @@ public class UserHistoryService {
         entity.setUserId(chatId);
         entity.setValue(value);
         userHistoryRepository.save(entity);
+    }
+
+    public void clearHistory(Long chatId) {
+        userHistoryRepository.deleteByUserId(chatId);
     }
 }

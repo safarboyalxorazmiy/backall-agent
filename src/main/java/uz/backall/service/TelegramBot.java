@@ -2,6 +2,7 @@ package uz.backall.service;
 
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import uz.backall.api.ApiService;
 import uz.backall.config.BotConfig;
 import uz.backall.user.Role;
 import uz.backall.user.UsersService;
@@ -15,6 +16,8 @@ import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import uz.backall.user.history.Label;
+import uz.backall.user.history.UserHistoryService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,10 +27,15 @@ import java.util.List;
 public class TelegramBot extends TelegramLongPollingBot {
     private final BotConfig config;
     private final UsersService usersService;
+    private final UserHistoryService userHistoryService;
 
-    public TelegramBot(BotConfig config, UsersService usersService) {
+    private final ApiService apiService;
+
+    public TelegramBot(BotConfig config, UsersService usersService, UserHistoryService userHistoryService, ApiService apiService) {
         this.config = config;
         this.usersService = usersService;
+        this.userHistoryService = userHistoryService;
+        this.apiService = apiService;
 
         List<BotCommand> listOfCommands = new ArrayList<>();
         listOfCommands.add(new BotCommand("/start", "Boshlash"));
@@ -92,47 +100,64 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                     if (role.equals(Role.ROLE_AGENT)) {
                         if (messageText.equals("Foydalanuvchi qo'shish ➕")) {
-                            SendMessage message = new SendMessage();
+                            sendMessageWithKeyboardButton(chatId, "Foydalanuvchining ismini kiriting.", "Bekor qilish \uD83D\uDD19");
 
-                            message.setChatId(chatId);
-                            message.setText("Foydalanuvchining ismini kiriting.");
-                            message.enableHtml(true);
+                            userHistoryService.clearHistory(chatId);
+                            userHistoryService.create(Label.OFFER_STARTED, chatId, "NO_VALUE");
+                        }
+                        else if (messageText.equals("Bekor qilish \uD83D\uDD19")) {
+                            sendMessageWithKeyboardButton(chatId, "Bosh menyu \uD83C\uDFD8", "Foydalanuvchi qo'shish ➕");
+                            userHistoryService.clearHistory(chatId);
+                        }
+                        else if (messageText.equals("Batafsil ma'lumot olish \uD83D\uDCDD")) {
+                            sendMessageWithKeyboardButton(chatId, "<b>Telegram bot bilan bog'liq qandaydur muammo kuzatilsa asoschi Safarboy bilan bog'laning!</b> \n" +
+                              "\uD83D\uDCF2 +998917972385  -  @dasturchialxorazmiy", "Sotuvni davom ettirish \uD83D\uDED2");
+                        }
+                        else if (messageText.equals("Sotuvni davom ettirish \uD83D\uDED2")) {
+                            sendMessageWithKeyboardButton(chatId, "Bosh menyu \uD83C\uDFD8", "Foydalanuvchi qo'shish ➕");
+                            userHistoryService.clearHistory(chatId);
+                        }
+                        else if (messageText.equals("Bosh menyuga qaytish \uD83D\uDD19")) {
+                            sendMessageWithKeyboardButton(chatId, "Bosh menyu \uD83C\uDFD8", "Foydalanuvchi qo'shish ➕");
+                            userHistoryService.clearHistory(chatId);
+                        }
+                        else {
+                            Label lastLabelByChatId = userHistoryService.getLastLabelByChatId(chatId);
 
-                            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
-                            List<KeyboardRow> rows = new ArrayList<>();
-                            KeyboardRow row = new KeyboardRow();
-                            row.add("Bekor qilish \uD83D\uDD19");
-                            rows.add(row);
-                            replyKeyboardMarkup.setResizeKeyboard(true);
-                            replyKeyboardMarkup.setKeyboard(rows);
+                            if (lastLabelByChatId != null) {
+                                if (lastLabelByChatId.equals(Label.OFFER_STARTED)) {
+                                    userHistoryService.create(Label.NAME_ENTERED, chatId, messageText);
+                                    sendMessageWithKeyboardButton(chatId, "Foydalanuvchining familyasini kiriting.", "Bekor qilish \uD83D\uDD19");
+                                }
+                                else if (lastLabelByChatId.equals(Label.NAME_ENTERED)) {
+                                    userHistoryService.create(Label.SURNAME_ENTERED, chatId, messageText);
+                                    sendMessageWithKeyboardButton(chatId, "Magazin INNsini kiriting..", "Bekor qilish \uD83D\uDD19");
+                                }
+                                else if (lastLabelByChatId.equals(Label.SURNAME_ENTERED)) {
+                                    userHistoryService.create(Label.ID_ENETERED, chatId, messageText);
+                                    sendMessageWithKeyboardButton(chatId, "Parolni kiriting..", "Bekor qilish \uD83D\uDD19");
+                                }
+                                else if (lastLabelByChatId.equals(Label.ID_ENETERED)) {
+                                    String name = userHistoryService.getLastValueByChatId(chatId, Label.NAME_ENTERED);
+                                    String surname = userHistoryService.getLastValueByChatId(chatId, Label.SURNAME_ENTERED);
+                                    String magazineId = userHistoryService.getLastValueByChatId(chatId, Label.ID_ENETERED);
+                                    String password = messageText;
 
-                            message.setReplyMarkup(replyKeyboardMarkup);
+                                    Integer isRegistered = apiService.registerUser(name, surname, magazineId, password);
+                                    if (isRegistered.equals(200)) {
+                                        sendMessageWithKeyboardButton(chatId, "Ajoyib, yaratildi. ✅", "Foydalanuvchi qo'shish ➕");
+                                    } else if (isRegistered.equals(400)) {
+                                        sendMessageWithKeyboardButton(chatId, "Bu INN allaqachon ro'yxatdan o'tgan.", "Bosh menyuga qaytish \uD83D\uDD19");
+                                    } else {
+                                        sendMessageWithKeyboardButton(chatId, "Server ishlamayapti, Iltimos hoziroq adminlar bilan bog'laning!", "Batafsil ma'lumot olish \uD83D\uDCDD");
+                                    }
 
-                            try {
-                                execute(message);
-                            } catch (TelegramApiException ignored) {
+                                    userHistoryService.clearHistory(chatId);
+                                }
                             }
-                        } else if (messageText.equals("Bekor qilish \uD83D\uDD19")) {
-                            SendMessage message = new SendMessage();
-                            message.setChatId(chatId);
-                            message.enableHtml(true);
-
-                            message.setText("Bosh menyu \uD83C\uDFD8");
-
-                            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
-                            List<KeyboardRow> rows = new ArrayList<>();
-                            KeyboardRow row = new KeyboardRow();
-                            row.add("Foydalanuvchi qo'shish ➕");
-                            rows.add(row);
-                            replyKeyboardMarkup.setResizeKeyboard(true);
-                            replyKeyboardMarkup.setKeyboard(rows);
-
-                            message.setReplyMarkup(replyKeyboardMarkup);
-
-                            try {
-                                execute(message);
-                            } catch (TelegramApiException e) {
-                                log.error("Error in startCommandReceived()");
+                            else {
+                                sendMessageWithKeyboardButton(chatId, "Siz bosh menyudasiz \uD83C\uDFD8 \n" +
+                                  "Pastdagi amallardan birini tanlang \uD83D\uDC47", "Foydalanuvchi qo'shish ➕");
                             }
                         }
                     } else if (role.equals(Role.ROLE_USER)) {
@@ -176,8 +201,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void helpCommandReceived(long chatId, String firstName) {
-    }
+    private void helpCommandReceived(long chatId, String firstName) {}
 
     private void sendMessage(long chatId, String textToSend) {
         SendMessage message = new SendMessage();
@@ -188,6 +212,31 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             execute(message);
         } catch (TelegramApiException ignored) {
+            log.error("Error in sendMessage()");
+        }
+    }
+
+    private void sendMessageWithKeyboardButton(long chatId, String textToSend, String keyboardRowText) {
+        SendMessage message = new SendMessage();
+
+        message.setChatId(chatId);
+        message.setText(textToSend);
+        message.enableHtml(true);
+
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> rows = new ArrayList<>();
+        KeyboardRow row = new KeyboardRow();
+        row.add(keyboardRowText);
+        rows.add(row);
+        replyKeyboardMarkup.setResizeKeyboard(true);
+        replyKeyboardMarkup.setKeyboard(rows);
+
+        message.setReplyMarkup(replyKeyboardMarkup);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException ignored) {
+            log.error("Error in sendMessageWithKeyboardButton()");
         }
     }
 }
