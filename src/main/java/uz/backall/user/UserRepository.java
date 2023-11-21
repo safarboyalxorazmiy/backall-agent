@@ -8,7 +8,7 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends CrudRepository<UserEntity, Long> {
-    Optional<UserEntity> getUserByChatId(Long chatId);
+  Optional<UserEntity> getUserByChatId(Long chatId);
 
-    List<UserEntity> findByRole(Role role);
+  List<UserEntity> findByRole(Role role);
 }

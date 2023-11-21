@@ -12,19 +12,19 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "bot_user")
 public class UserEntity {
-    @Id
-    private Long chatId;
+  @Id
+  private Long chatId;
 
-    @Column
-    private String firstName;
+  @Column
+  private String firstName;
 
-    @Column
-    private String lastName;
+  @Column
+  private String lastName;
 
-    @Column
-    private LocalDateTime registerAt;
+  @Column
+  private LocalDateTime registerAt;
 
-    @Enumerated(value = EnumType.STRING)
-    @Column
-    private Role role;
+  @Enumerated(value = EnumType.STRING)
+  @Column
+  private Role role;
 }
